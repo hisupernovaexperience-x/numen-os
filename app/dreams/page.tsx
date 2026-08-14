@@ -4,18 +4,19 @@ import { useState } from "react";
 import { useLocalStorage, newId } from "@/lib/storage";
 import { todayISO, formatDate } from "@/lib/date";
 import type { Dream, Mood } from "@/lib/types";
-import { Button, Card, EmptyState, Label, PageHeader, Select, TextArea, TextInput } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Label, PageHeader, Select, TextArea, TextInput } from "@/components/ui";
+import { MoonIcon, TrashIcon } from "@/components/icons";
 
-const MOODS: { value: Mood; label: string; icon: string }[] = [
-  { value: "great", label: "Genial", icon: "✨" },
-  { value: "good", label: "Bien", icon: "🙂" },
-  { value: "neutral", label: "Neutral", icon: "😐" },
-  { value: "bad", label: "Mal", icon: "😕" },
-  { value: "nightmare", label: "Pesadilla", icon: "😱" },
+const MOODS: { value: Mood; label: string }[] = [
+  { value: "great", label: "Genial" },
+  { value: "good", label: "Bien" },
+  { value: "neutral", label: "Neutral" },
+  { value: "bad", label: "Mal" },
+  { value: "nightmare", label: "Pesadilla" },
 ];
 
-function moodMeta(mood: Mood) {
-  return MOODS.find((m) => m.value === mood) ?? MOODS[2];
+function moodLabel(mood: Mood) {
+  return MOODS.find((m) => m.value === mood)?.label ?? "Neutral";
 }
 
 export default function DreamsPage() {
@@ -91,7 +92,7 @@ export default function DreamsPage() {
                 <Select id="d-mood" value={mood} onChange={(e) => setMood(e.target.value as Mood)}>
                   {MOODS.map((m) => (
                     <option key={m.value} value={m.value}>
-                      {m.icon} {m.label}
+                      {m.label}
                     </option>
                   ))}
                 </Select>
@@ -118,45 +119,38 @@ export default function DreamsPage() {
       )}
 
       {hydrated && sorted.length === 0 && !showForm && (
-        <EmptyState icon="🌙" title="Todavía no hay sueños" hint="Agregá el primero apenas te despiertes, mientras lo recordás bien." />
+        <EmptyState icon={<MoonIcon className="size-8" />} title="Todavía no hay sueños" hint="Agregá el primero apenas te despiertes, mientras lo recordás bien." />
       )}
 
       <div className="grid gap-3">
-        {sorted.map((dream) => {
-          const meta = moodMeta(dream.mood);
-          return (
-            <Card key={dream.id}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-medium">{dream.title}</h3>
-                    {dream.lucid && (
-                      <span className="text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-600 dark:text-violet-300">
-                        Lúcido
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-foreground/50 mt-0.5">
-                    {formatDate(dream.date)} · {meta.icon} {meta.label}
-                  </p>
-                  {dream.description && <p className="text-sm text-foreground/80 mt-2 whitespace-pre-wrap">{dream.description}</p>}
-                  {dream.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {dream.tags.map((tag) => (
-                        <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-foreground/70">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+        {sorted.map((dream) => (
+          <Card key={dream.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-medium">{dream.title}</h3>
+                  {dream.lucid && <Badge tone="accent">Lúcido</Badge>}
                 </div>
-                <Button variant="danger" onClick={() => removeDream(dream.id)} aria-label="Borrar sueño">
-                  ✕
-                </Button>
+                <p className="text-xs text-muted mt-0.5">
+                  {formatDate(dream.date)} · {moodLabel(dream.mood)}
+                </p>
+                {dream.description && <p className="text-sm text-foreground/80 mt-2 whitespace-pre-wrap">{dream.description}</p>}
+                {dream.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {dream.tags.map((tag) => (
+                      <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-muted">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            </Card>
-          );
-        })}
+              <Button variant="danger" onClick={() => removeDream(dream.id)} aria-label="Borrar sueño">
+                <TrashIcon className="size-4" />
+              </Button>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );

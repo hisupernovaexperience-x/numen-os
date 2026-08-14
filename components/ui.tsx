@@ -1,19 +1,18 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, LabelHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+"use client";
+
+import { useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { CloseIcon } from "@/components/icons";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div
-      className={`rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] p-4 ${className}`}
-    >
-      {children}
-    </div>
+    <div className={`rounded-2xl border border-border bg-surface p-4 ${className}`}>{children}</div>
   );
 }
 
 const buttonVariants = {
-  primary: "bg-foreground text-background hover:opacity-90",
+  primary: "bg-accent text-accent-foreground hover:opacity-90",
   ghost: "bg-transparent hover:bg-black/5 dark:hover:bg-white/10 text-foreground",
-  danger: "bg-transparent text-red-600 dark:text-red-400 hover:bg-red-600/10",
+  danger: "bg-transparent text-danger hover:bg-danger/10",
 } as const;
 
 export function Button({
@@ -30,11 +29,11 @@ export function Button({
 }
 
 export function Label(props: LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className="block text-xs font-medium text-foreground/70 mb-1" {...props} />;
+  return <label className="block text-xs font-medium text-muted mb-1" {...props} />;
 }
 
 const fieldClass =
-  "w-full rounded-lg border border-black/10 dark:border-white/15 bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/30";
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent";
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={fieldClass} {...props} />;
@@ -48,14 +47,26 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select className={fieldClass} {...props} />;
 }
 
-export function EmptyState({ icon, title, hint }: { icon: string; title: string; hint: string }) {
+export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "accent" }) {
+  const toneClass =
+    tone === "accent"
+      ? "bg-accent-soft text-accent"
+      : "bg-black/5 dark:bg-white/10 text-muted";
   return (
-    <div className="flex flex-col items-center justify-center text-center gap-2 rounded-xl border border-dashed border-black/15 dark:border-white/15 py-14 px-4">
-      <span className="text-3xl" aria-hidden="true">
+    <span className={`inline-flex items-center text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ${toneClass}`}>
+      {children}
+    </span>
+  );
+}
+
+export function EmptyState({ icon, title, hint }: { icon: ReactNode; title: string; hint: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center gap-2 rounded-2xl border border-dashed border-border py-14 px-4">
+      <span className="text-muted" aria-hidden="true">
         {icon}
       </span>
       <p className="font-medium">{title}</p>
-      <p className="text-sm text-foreground/60 max-w-xs">{hint}</p>
+      <p className="text-sm text-muted max-w-xs">{hint}</p>
     </div>
   );
 }
@@ -64,7 +75,49 @@ export function PageHeader({ title, description }: { title: string; description:
   return (
     <div className="mb-6">
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="text-sm text-foreground/60 mt-1">{description}</p>
+      <p className="text-sm text-muted mt-1">{description}</p>
+    </div>
+  );
+}
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <button
+        aria-label="Cerrar"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
+      />
+      <div className="relative w-full sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-border bg-background p-5 shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold">{title}</h2>
+          <button onClick={onClose} aria-label="Cerrar" className="text-muted hover:text-foreground">
+            <CloseIcon className="size-5" />
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

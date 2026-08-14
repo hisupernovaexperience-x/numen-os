@@ -13,32 +13,39 @@ export interface Dream {
 
 export type HabitFrequency = "daily" | "weekly";
 
+export interface HabitEvidence {
+  text: string;
+  photoDataUrl: string | null;
+  updatedAt: string;
+}
+
 export interface Habit {
   id: string;
   name: string;
   description: string;
   frequency: HabitFrequency;
-  completions: string[]; // ISO yyyy-mm-dd dates
+  completions: Record<string, HabitEvidence>; // fecha ISO -> evidencia
   createdAt: string;
   archived: boolean;
 }
 
-export type GoalCategory = "personal" | "salud" | "trabajo" | "aprendizaje" | "finanzas" | "otro";
-export type GoalStatus = "active" | "completed" | "paused";
-
-export interface Milestone {
-  id: string;
-  title: string;
-  done: boolean;
+export interface BirthPlace {
+  country: string;
+  city: string;
+  locality: string;
 }
 
-export interface Goal {
+export interface UserProfile {
+  name: string;
+  sex: "femenino" | "masculino" | "otro" | "prefiero_no_decir";
+  birthDate: string; // ISO yyyy-mm-dd
+  birthTime: string | null; // HH:mm, null si desconocida
+  birthPlace: BirthPlace;
+  onboardedAt: string;
+}
+
+export interface Mission {
   id: string;
   title: string;
   description: string;
-  category: GoalCategory;
-  targetDate: string | null; // ISO yyyy-mm-dd
-  status: GoalStatus;
-  milestones: Milestone[];
-  createdAt: string;
 }
