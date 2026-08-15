@@ -4,6 +4,8 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { isMockMode } from "@/lib/mock-mode";
+import { mockDB } from "@/lib/mock-store";
 import type { FormState } from "@/app/actions/auth";
 
 const ProfileSchema = z.object({
@@ -34,6 +36,22 @@ export async function saveProfile(_prevState: FormState, formData: FormData): Pr
   }
 
   const { name, sex, birthDate, birthTime, country, city, locality } = parsed.data;
+
+  if (isMockMode) {
+    if (mockDB.profile) {
+      return { error: "Ya configuraste tu partida." };
+    }
+    mockDB.profile = {
+      name,
+      sex,
+      birthDate,
+      birthTime: birthTime || null,
+      country,
+      city,
+      locality: locality || null,
+    };
+    redirect("/");
+  }
 
   const existing = await prisma.profile.findUnique({ where: { userId } });
   if (existing) {

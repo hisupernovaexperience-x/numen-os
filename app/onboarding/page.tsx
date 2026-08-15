@@ -1,14 +1,17 @@
 import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { isMockMode } from "@/lib/mock-mode";
+import { mockDB } from "@/lib/mock-store";
 import OnboardingForm from "@/components/onboarding/OnboardingForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function OnboardingPage() {
   const { userId } = await verifySession();
-  const existing = await prisma.profile.findUnique({ where: { userId } });
-  if (existing) redirect("/");
+
+  const alreadyOnboarded = isMockMode ? !!mockDB.profile : !!(await prisma.profile.findUnique({ where: { userId } }));
+  if (alreadyOnboarded) redirect("/");
 
   return (
     <div className="min-h-dvh flex items-center justify-center px-4 py-10">

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { verifySession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { isMockMode } from "@/lib/mock-mode";
+import { mockDB, newMockId } from "@/lib/mock-store";
 
 const MAX_TEXT = 500;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -23,6 +25,20 @@ const CreateHabitSchema = z.object({
 export async function createHabit(input: { name: string; frequency: "daily" | "weekly" }) {
   const { userId } = await verifySession();
   const parsed = CreateHabitSchema.parse(input);
+
+  if (isMockMode) {
+    mockDB.habits.unshift({
+      id: newMockId(),
+      name: parsed.name,
+      frequency: parsed.frequency,
+      createdAt: new Date().toISOString(),
+      completions: [],
+    });
+    revalidatePath("/habits");
+    revalidatePath("/");
+    return;
+  }
+
   await prisma.habit.create({ data: { userId, name: parsed.name, frequency: parsed.frequency } });
   revalidatePath("/habits");
   revalidatePath("/");
@@ -30,6 +46,14 @@ export async function createHabit(input: { name: string; frequency: "daily" | "w
 
 export async function deleteHabit(habitId: string) {
   const { userId } = await verifySession();
+
+  if (isMockMode) {
+    mockDB.habits = mockDB.habits.filter((h) => h.id !== habitId);
+    revalidatePath("/habits");
+    revalidatePath("/");
+    return;
+  }
+
   await assertOwnsHabit(userId, habitId);
   await prisma.habit.delete({ where: { id: habitId } });
   revalidatePath("/habits");
@@ -54,6 +78,22 @@ export async function saveHabitEvidence(input: {
   if (!parsed.text.trim() && !parsed.photoDataUrl) {
     throw new Error("Se necesita texto o foto como evidencia.");
   }
+
+  if (isMockMode) {
+    const habit = mockDB.habits.find((h) => h.id === parsed.habitId);
+    if (!habit) throw new Error("No autorizado");
+    const existing = habit.completions.find((c) => c.date === parsed.date);
+    const evidence = { date: parsed.date, text: parsed.text.trim(), photoDataUrl: parsed.photoDataUrl };
+    if (existing) {
+      Object.assign(existing, evidence);
+    } else {
+      habit.completions.push(evidence);
+    }
+    revalidatePath("/habits");
+    revalidatePath("/");
+    return;
+  }
+
   await assertOwnsHabit(userId, parsed.habitId);
 
   const date = new Date(`${parsed.date}T00:00:00.000Z`);
@@ -75,6 +115,16 @@ export async function saveHabitEvidence(input: {
 export async function deleteHabitEvidence(habitId: string, isoDate: string) {
   const { userId } = await verifySession();
   if (!ISO_DATE.test(isoDate)) throw new Error("Fecha inválida.");
+
+  if (isMockMode) {
+    const habit = mockDB.habits.find((h) => h.id === habitId);
+    if (!habit) throw new Error("No autorizado");
+    habit.completions = habit.completions.filter((c) => c.date !== isoDate);
+    revalidatePath("/habits");
+    revalidatePath("/");
+    return;
+  }
+
   await assertOwnsHabit(userId, habitId);
   const date = new Date(`${isoDate}T00:00:00.000Z`);
   await prisma.habitCompletion.deleteMany({ where: { habitId, date } });

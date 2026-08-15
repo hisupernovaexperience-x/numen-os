@@ -1,11 +1,13 @@
 "use server";
 
 import { z } from "zod";
+import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { isMockMode } from "@/lib/mock-mode";
 
 export type FormState = { error?: string } | undefined;
 
@@ -30,6 +32,10 @@ export async function signup(_prevState: FormState, formData: FormData): Promise
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   }
   const { name, email, password } = parsed.data;
+
+  if (isMockMode) {
+    redirect("/onboarding");
+  }
 
   const limited = consumeRateLimit(`signup:${email.toLowerCase()}`, 5, 15 * 60 * 1000);
   if (!limited.allowed) {
@@ -68,6 +74,10 @@ export async function login(_prevState: FormState, formData: FormData): Promise<
     return { error: "Ingresá un email y contraseña válidos." };
   }
 
+  if (isMockMode) {
+    redirect("/");
+  }
+
   try {
     await signIn("credentials", { ...parsed.data, redirectTo: "/" });
   } catch (error) {
@@ -79,6 +89,9 @@ export async function login(_prevState: FormState, formData: FormData): Promise<
 }
 
 export async function signInWithGoogle() {
+  if (isMockMode) {
+    redirect("/");
+  }
   await signIn("google", { redirectTo: "/" });
 }
 
@@ -88,6 +101,10 @@ export async function signInWithMagicLink(_prevState: FormState, formData: FormD
   const parsed = MagicLinkSchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) {
     return { error: "Ingresá un email válido." };
+  }
+
+  if (isMockMode) {
+    redirect("/");
   }
 
   const limited = consumeRateLimit(`magiclink:${parsed.data.email.toLowerCase()}`, 5, 15 * 60 * 1000);
@@ -106,5 +123,8 @@ export async function signInWithMagicLink(_prevState: FormState, formData: FormD
 }
 
 export async function logout() {
+  if (isMockMode) {
+    redirect("/login");
+  }
   await signOut({ redirectTo: "/login" });
 }

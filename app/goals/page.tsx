@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function GoalsPage() {
   const { profile } = await requireProfile();
   const integration = buildNatalCard({
-    birthDate: profile.birthDate.toISOString().slice(0, 10),
+    birthDate: profile.birthDate,
     birthTime: profile.birthTime,
   }).integration;
 

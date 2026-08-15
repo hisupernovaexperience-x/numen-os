@@ -23,7 +23,7 @@ Resumen de las normas aplicadas al agregar login y guardado de datos de usuarios
 
 `next.config.ts` agrega en todas las rutas:
 
-- `Content-Security-Policy` (restringe scripts/estilos/conexiones a same-origin; `img-src` permite `data:` porque la evidencia de hábitos se guarda como foto en base64).
+- `Content-Security-Policy` (restringe scripts/estilos/conexiones a same-origin; `img-src` permite `data:`/`blob:` porque la evidencia de hábitos se guarda como foto en base64). Usa la variante "sin nonces" documentada por Next.js (`'unsafe-inline'` en `script-src`/`style-src`, `'unsafe-eval'` solo en dev) porque la variante con nonce exige que **todas** las páginas sean dinámicas — con nonces se probó en local y rompía la hidratación de React al bloquear el bootstrap inline de Next.js. Si más adelante se necesita CSP estricta sin `unsafe-inline`, hay que migrar a nonces generados en `proxy.ts` y volver dinámicas las páginas esqueleto que hoy son estáticas.
 - `X-Frame-Options: DENY` y `frame-ancestors 'none'` (anti-clickjacking).
 - `Strict-Transport-Security` (fuerza HTTPS una vez desplegado).
 - `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.

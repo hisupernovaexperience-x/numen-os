@@ -4,6 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { verifySession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { isMockMode } from "@/lib/mock-mode";
+import { mockDB, newMockId } from "@/lib/mock-store";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -26,6 +28,23 @@ export async function createDream(input: {
 }) {
   const { userId } = await verifySession();
   const parsed = CreateDreamSchema.parse(input);
+
+  if (isMockMode) {
+    mockDB.dreams.unshift({
+      id: newMockId(),
+      title: parsed.title,
+      description: parsed.description,
+      date: parsed.date,
+      lucid: parsed.lucid,
+      mood: parsed.mood,
+      tags: parsed.tags,
+      createdAt: new Date().toISOString(),
+    });
+    revalidatePath("/dreams");
+    revalidatePath("/");
+    return;
+  }
+
   await prisma.dream.create({
     data: {
       userId,
@@ -43,6 +62,14 @@ export async function createDream(input: {
 
 export async function deleteDream(dreamId: string) {
   const { userId } = await verifySession();
+
+  if (isMockMode) {
+    mockDB.dreams = mockDB.dreams.filter((d) => d.id !== dreamId);
+    revalidatePath("/dreams");
+    revalidatePath("/");
+    return;
+  }
+
   const dream = await prisma.dream.findUnique({ where: { id: dreamId }, select: { userId: true } });
   if (!dream || dream.userId !== userId) {
     throw new Error("No autorizado");

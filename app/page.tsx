@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/onboarding";
 import { prisma } from "@/lib/prisma";
+import { isMockMode } from "@/lib/mock-mode";
+import { mockDB } from "@/lib/mock-store";
 import { buildNatalCard } from "@/lib/astro";
 import { calcStreak, todayISO } from "@/lib/date";
 import { Badge, Card } from "@/components/ui";
@@ -8,8 +10,18 @@ import { CompassIcon, MoonIcon, PulseIcon, SparkleIcon } from "@/components/icon
 
 export const dynamic = "force-dynamic";
 
-export default async function Dashboard() {
-  const { userId, profile } = await requireProfile();
+async function getDashboardStats(userId: string) {
+  const today = todayISO();
+
+  if (isMockMode) {
+    const habits = mockDB.habits;
+    return {
+      dreamCount: mockDB.dreams.length,
+      habitsCount: habits.length,
+      doneToday: habits.filter((h) => h.completions.some((c) => c.date === today)).length,
+      bestStreak: habits.reduce((max, h) => Math.max(max, calcStreak(h.completions.map((c) => c.date))), 0),
+    };
+  }
 
   const [dreamCount, habits] = await Promise.all([
     prisma.dream.count({ where: { userId } }),
@@ -19,17 +31,25 @@ export default async function Dashboard() {
     }),
   ]);
 
+  return {
+    dreamCount,
+    habitsCount: habits.length,
+    doneToday: habits.filter((h) => h.completions.some((c) => c.date.toISOString().slice(0, 10) === today)).length,
+    bestStreak: habits.reduce(
+      (max, h) => Math.max(max, calcStreak(h.completions.map((c) => c.date.toISOString().slice(0, 10)))),
+      0,
+    ),
+  };
+}
+
+export default async function Dashboard() {
+  const { userId, profile } = await requireProfile();
+  const { dreamCount, habitsCount, doneToday, bestStreak } = await getDashboardStats(userId);
+
   const card = buildNatalCard({
-    birthDate: profile.birthDate.toISOString().slice(0, 10),
+    birthDate: profile.birthDate,
     birthTime: profile.birthTime,
   });
-
-  const today = todayISO();
-  const doneToday = habits.filter((h) => h.completions.some((c) => c.date.toISOString().slice(0, 10) === today)).length;
-  const bestStreak = habits.reduce(
-    (max, h) => Math.max(max, calcStreak(h.completions.map((c) => c.date.toISOString().slice(0, 10)))),
-    0,
-  );
 
   return (
     <div>
@@ -93,7 +113,7 @@ export default async function Dashboard() {
               <p className="text-xs font-medium text-muted uppercase tracking-wide">Hábitos</p>
             </div>
             <p className="text-2xl font-semibold">
-              {doneToday}/{habits.length}
+              {doneToday}/{habitsCount}
             </p>
             <p className="text-xs text-muted mt-1">{bestStreak > 0 ? `Mejor racha: ${bestStreak} días` : "hechos hoy"}</p>
           </Card>
