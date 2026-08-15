@@ -1,8 +1,5 @@
-"use client";
-
-import { useLocalStorage } from "@/lib/storage";
+import { requireProfile } from "@/lib/onboarding";
 import { buildNatalCard } from "@/lib/astro";
-import type { UserProfile } from "@/lib/types";
 import { Card, PageHeader } from "@/components/ui";
 
 const MONTHS = [
@@ -10,9 +7,14 @@ const MONTHS = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-export default function GoalsPage() {
-  const [profile] = useLocalStorage<UserProfile | null>("numen:profile", null);
-  const integration = profile ? buildNatalCard(profile).integration : null;
+export const dynamic = "force-dynamic";
+
+export default async function GoalsPage() {
+  const { profile } = await requireProfile();
+  const integration = buildNatalCard({
+    birthDate: profile.birthDate.toISOString().slice(0, 10),
+    birthTime: profile.birthTime,
+  }).integration;
 
   return (
     <div>
@@ -21,14 +23,12 @@ export default function GoalsPage() {
         description="Objetivos desglosados por mes, personalizados según lo que venís a integrar — no por áreas de vida genéricas."
       />
 
-      {integration && (
-        <Card className="mb-6">
-          <p className="text-sm">
-            Este año venís trabajando principalmente: <span className="font-medium text-accent">{integration}</span>.
-            Los goals de cada mes se van a sugerir en base a esto.
-          </p>
-        </Card>
-      )}
+      <Card className="mb-6">
+        <p className="text-sm">
+          Este año venís trabajando principalmente: <span className="font-medium text-accent">{integration}</span>.
+          Los goals de cada mes se van a sugerir en base a esto.
+        </p>
+      </Card>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {MONTHS.map((month) => (

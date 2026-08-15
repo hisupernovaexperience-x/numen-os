@@ -1,157 +1,26 @@
-"use client";
+import { verifySession } from "@/lib/dal";
+import { prisma } from "@/lib/prisma";
+import DreamsBoard, { type DreamView } from "@/components/dreams/DreamsBoard";
 
-import { useState } from "react";
-import { useLocalStorage, newId } from "@/lib/storage";
-import { todayISO, formatDate } from "@/lib/date";
-import type { Dream, Mood } from "@/lib/types";
-import { Badge, Button, Card, EmptyState, Label, PageHeader, Select, TextArea, TextInput } from "@/components/ui";
-import { MoonIcon, TrashIcon } from "@/components/icons";
+export const dynamic = "force-dynamic";
 
-const MOODS: { value: Mood; label: string }[] = [
-  { value: "great", label: "Genial" },
-  { value: "good", label: "Bien" },
-  { value: "neutral", label: "Neutral" },
-  { value: "bad", label: "Mal" },
-  { value: "nightmare", label: "Pesadilla" },
-];
+export default async function DreamsPage() {
+  const { userId } = await verifySession();
 
-function moodLabel(mood: Mood) {
-  return MOODS.find((m) => m.value === mood)?.label ?? "Neutral";
-}
+  const dreams = await prisma.dream.findMany({
+    where: { userId },
+    orderBy: { date: "desc" },
+  });
 
-export default function DreamsPage() {
-  const [dreams, setDreams, hydrated] = useLocalStorage<Dream[]>("numen:dreams", []);
-  const [showForm, setShowForm] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [date, setDate] = useState(todayISO());
-  const [lucid, setLucid] = useState(false);
-  const [mood, setMood] = useState<Mood>("neutral");
-  const [tags, setTags] = useState("");
+  const dreamViews: DreamView[] = dreams.map((d) => ({
+    id: d.id,
+    title: d.title,
+    description: d.description,
+    date: d.date.toISOString().slice(0, 10),
+    tags: d.tags,
+    lucid: d.lucid,
+    mood: d.mood as DreamView["mood"],
+  }));
 
-  function resetForm() {
-    setTitle("");
-    setDescription("");
-    setDate(todayISO());
-    setLucid(false);
-    setMood("neutral");
-    setTags("");
-    setShowForm(false);
-  }
-
-  function addDream() {
-    if (!title.trim()) return;
-    const dream: Dream = {
-      id: newId(),
-      title: title.trim(),
-      description: description.trim(),
-      date,
-      lucid,
-      mood,
-      tags: tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      createdAt: new Date().toISOString(),
-    };
-    setDreams((prev) => [dream, ...prev]);
-    resetForm();
-  }
-
-  function removeDream(id: string) {
-    setDreams((prev) => prev.filter((d) => d.id !== id));
-  }
-
-  const sorted = [...dreams].sort((a, b) => b.date.localeCompare(a.date));
-
-  return (
-    <div>
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader title="Sueños" description="Registrá tus sueños apenas te despiertes." />
-        <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancelar" : "+ Nuevo"}</Button>
-      </div>
-
-      {showForm && (
-        <Card className="mb-6">
-          <div className="grid gap-3">
-            <div>
-              <Label htmlFor="d-title">Título</Label>
-              <TextInput id="d-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Volaba sobre la ciudad" autoFocus />
-            </div>
-            <div>
-              <Label htmlFor="d-desc">Descripción</Label>
-              <TextArea id="d-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="¿Qué pasó en el sueño?" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="d-date">Fecha</Label>
-                <TextInput id="d-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="d-mood">Estado de ánimo</Label>
-                <Select id="d-mood" value={mood} onChange={(e) => setMood(e.target.value as Mood)}>
-                  {MOODS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="d-tags">Tags (separados por coma)</Label>
-              <TextInput id="d-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="vuelo, familia, recurrente" />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={lucid} onChange={(e) => setLucid(e.target.checked)} className="size-4" />
-              Fue un sueño lúcido
-            </label>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={resetForm}>
-                Cancelar
-              </Button>
-              <Button onClick={addDream} disabled={!title.trim()}>
-                Guardar sueño
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {hydrated && sorted.length === 0 && !showForm && (
-        <EmptyState icon={<MoonIcon className="size-8" />} title="Todavía no hay sueños" hint="Agregá el primero apenas te despiertes, mientras lo recordás bien." />
-      )}
-
-      <div className="grid gap-3">
-        {sorted.map((dream) => (
-          <Card key={dream.id}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-medium">{dream.title}</h3>
-                  {dream.lucid && <Badge tone="accent">Lúcido</Badge>}
-                </div>
-                <p className="text-xs text-muted mt-0.5">
-                  {formatDate(dream.date)} · {moodLabel(dream.mood)}
-                </p>
-                {dream.description && <p className="text-sm text-foreground/80 mt-2 whitespace-pre-wrap">{dream.description}</p>}
-                {dream.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {dream.tags.map((tag) => (
-                      <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-muted">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <Button variant="danger" onClick={() => removeDream(dream.id)} aria-label="Borrar sueño">
-                <TrashIcon className="size-4" />
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
+  return <DreamsBoard dreams={dreamViews} />;
 }

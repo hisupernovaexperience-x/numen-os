@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { logout } from "@/app/actions/auth";
 import {
   CalendarIcon,
   CloseIcon,
@@ -68,7 +69,7 @@ export default function NavBar() {
     setOpen(false);
   }
 
-  if (pathname === "/onboarding") return null;
+  if (pathname === "/onboarding" || pathname === "/login" || pathname === "/signup") return null;
 
   return (
     <>
@@ -76,6 +77,11 @@ export default function NavBar() {
       <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:border-border md:py-6 md:px-3 md:shrink-0">
         <div className="px-3 pb-6 text-lg font-semibold tracking-tight">Numen</div>
         <SidebarLinks pathname={pathname} />
+        <form action={logout} className="mt-auto pt-3">
+          <button type="submit" className="w-full text-left rounded-lg px-3 py-2 text-sm font-medium text-muted hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground">
+            Cerrar sesión
+          </button>
+        </form>
       </aside>
 
       {/* Topbar de mobile */}
@@ -102,6 +108,11 @@ export default function NavBar() {
               </button>
             </div>
             <SidebarLinks pathname={pathname} onNavigate={() => setOpen(false)} />
+            <form action={logout} className="mt-auto pt-3">
+              <button type="submit" className="w-full text-left rounded-lg px-3 py-2 text-sm font-medium text-muted hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground">
+                Cerrar sesión
+              </button>
+            </form>
           </div>
         </div>
       )}

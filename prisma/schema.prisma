@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Auth.js (NextAuth v5) ---
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  /// Hash bcrypt de la contraseña. Null para usuarios que solo usan Google u otro login sin contraseña.
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+
+  accounts Account[]
+  profile  Profile?
+  dreams   Dream[]
+  habits   Habit[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- Datos de la app, siempre scoped por userId ---
+
+model Profile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  name        String
+  sex         String
+  birthDate   DateTime @db.Date
+  birthTime   String?
+  country     String
+  city        String
+  locality    String?
+  onboardedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Dream {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String   @db.Text
+  date        DateTime @db.Date
+  tags        String[]
+  lucid       Boolean  @default(false)
+  mood        String
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model Habit {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  frequency String
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completions HabitCompletion[]
+
+  @@index([userId])
+}
+
+model HabitCompletion {
+  id           String   @id @default(cuid())
+  habitId      String
+  /// Duplicado de habit.userId para poder autorizar cada fila sin depender de un join.
+  userId       String
+  date         DateTime @db.Date
+  text         String   @db.Text
+  photoDataUrl String?  @db.Text
+  updatedAt    DateTime @updatedAt
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([userId])
+}

@@ -1,25 +1,35 @@
-"use client";
-
 import Link from "next/link";
-import { useLocalStorage } from "@/lib/storage";
-import { calcStreak, todayISO } from "@/lib/date";
+import { requireProfile } from "@/lib/onboarding";
+import { prisma } from "@/lib/prisma";
 import { buildNatalCard } from "@/lib/astro";
-import type { Dream, Habit, UserProfile } from "@/lib/types";
+import { calcStreak, todayISO } from "@/lib/date";
 import { Badge, Card } from "@/components/ui";
 import { CompassIcon, MoonIcon, PulseIcon, SparkleIcon } from "@/components/icons";
 
-export default function Dashboard() {
-  const [profile] = useLocalStorage<UserProfile | null>("numen:profile", null);
-  const [dreams] = useLocalStorage<Dream[]>("numen:dreams", []);
-  const [habits] = useLocalStorage<Habit[]>("numen:habits", []);
+export const dynamic = "force-dynamic";
 
-  if (!profile) return null;
+export default async function Dashboard() {
+  const { userId, profile } = await requireProfile();
 
-  const card = buildNatalCard(profile);
+  const [dreamCount, habits] = await Promise.all([
+    prisma.dream.count({ where: { userId } }),
+    prisma.habit.findMany({
+      where: { userId, archived: false },
+      include: { completions: { select: { date: true } } },
+    }),
+  ]);
+
+  const card = buildNatalCard({
+    birthDate: profile.birthDate.toISOString().slice(0, 10),
+    birthTime: profile.birthTime,
+  });
+
   const today = todayISO();
-  const activeHabits = habits.filter((h) => !h.archived);
-  const doneToday = activeHabits.filter((h) => today in h.completions).length;
-  const bestStreak = activeHabits.reduce((max, h) => Math.max(max, calcStreak(Object.keys(h.completions))), 0);
+  const doneToday = habits.filter((h) => h.completions.some((c) => c.date.toISOString().slice(0, 10) === today)).length;
+  const bestStreak = habits.reduce(
+    (max, h) => Math.max(max, calcStreak(h.completions.map((c) => c.date.toISOString().slice(0, 10)))),
+    0,
+  );
 
   return (
     <div>
@@ -83,7 +93,7 @@ export default function Dashboard() {
               <p className="text-xs font-medium text-muted uppercase tracking-wide">Hábitos</p>
             </div>
             <p className="text-2xl font-semibold">
-              {doneToday}/{activeHabits.length}
+              {doneToday}/{habits.length}
             </p>
             <p className="text-xs text-muted mt-1">{bestStreak > 0 ? `Mejor racha: ${bestStreak} días` : "hechos hoy"}</p>
           </Card>
@@ -95,7 +105,7 @@ export default function Dashboard() {
               <MoonIcon className="size-4 text-muted" />
               <p className="text-xs font-medium text-muted uppercase tracking-wide">Sueños</p>
             </div>
-            <p className="text-2xl font-semibold">{dreams.length}</p>
+            <p className="text-2xl font-semibold">{dreamCount}</p>
             <p className="text-xs text-muted mt-1">registrados</p>
           </Card>
         </Link>

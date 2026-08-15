@@ -1,4 +1,9 @@
-import type { Mission, UserProfile } from "@/lib/types";
+import type { Mission } from "@/lib/types";
+
+export interface NatalInput {
+  birthDate: string; // ISO yyyy-mm-dd
+  birthTime: string | null;
+}
 
 // --- Signo zodiacal (occidental) — cálculo exacto por rango de fechas ---
 
@@ -77,7 +82,7 @@ function hashString(input: string): number {
   return hash;
 }
 
-export function getHumanDesignType(profile: Pick<UserProfile, "birthDate" | "birthTime">): string {
+export function getHumanDesignType(profile: NatalInput): string {
   const seed = hashString(`${profile.birthDate}T${profile.birthTime ?? "unknown"}`);
   return HUMAN_DESIGN_TYPES[seed % HUMAN_DESIGN_TYPES.length];
 }
@@ -179,7 +184,7 @@ export interface NatalCard {
   missions: Mission[];
 }
 
-export function buildNatalCard(profile: UserProfile): NatalCard {
+export function buildNatalCard(profile: NatalInput): NatalCard {
   const sign = getZodiacSign(profile.birthDate);
   const humanDesignType = getHumanDesignType(profile);
   const mayanKin = getMayanKin(profile.birthDate);
